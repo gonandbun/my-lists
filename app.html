@@ -194,6 +194,60 @@
 
     .btn-del:hover { color: #ff3b30; background: #fff0ee; }
 
+    .btn-edit {
+      background: none;
+      border: none;
+      color: #bbb;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: color .15s, background .15s;
+      line-height: 1;
+    }
+
+    .btn-edit:hover { color: #007aff; background: #e8f0ff; }
+
+    .edit-form {
+      background: #f5f5f7;
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .edit-form .form-row { margin: 0; }
+
+    .edit-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn-save {
+      padding: 7px 16px;
+      background: #007aff;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-cancel {
+      padding: 7px 16px;
+      background: #e5e5ea;
+      color: #333;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
     /* ---- 買い物リスト ---- */
     .store-section { margin-bottom: 20px; }
 
@@ -297,6 +351,16 @@
       border: 1px solid #bee3f8;
     }
 
+    .badge-store-coupon {
+      background: #fce8ff;
+      color: #7b00a8;
+      border: 1px solid #e8b0ff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+
     .empty-msg {
       text-align: center;
       color: #bbb;
@@ -386,15 +450,28 @@
         <input type="number" id="shop-price" placeholder="円" min="0">
       </div>
     </div>
-    <div class="form-row" style="margin-top:10px;align-items:center;">
-      <label class="coupon-toggle">
-        <input type="checkbox" id="coupon-check" onchange="toggleCoupon()">
-        🎟 クーポンあり
-      </label>
-      <div id="coupon-text-wrap" class="hidden form-group">
-        <input type="text" id="coupon-text" placeholder="クーポン内容（任意）">
+    <div class="form-row" style="margin-top:10px;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:200px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <label class="coupon-toggle">
+            <input type="checkbox" id="coupon-check" onchange="toggleCoupon('coupon-text-wrap')">
+            🎟 商品クーポン
+          </label>
+          <div id="coupon-text-wrap" class="hidden form-group" style="flex:1;min-width:120px;">
+            <input type="text" id="coupon-text" placeholder="内容（任意）">
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <label class="coupon-toggle">
+            <input type="checkbox" id="store-coupon-check" onchange="toggleCoupon('store-coupon-text-wrap')">
+            🏷 お店クーポン
+          </label>
+          <div id="store-coupon-text-wrap" class="hidden form-group" style="flex:1;min-width:120px;">
+            <input type="text" id="store-coupon-text" placeholder="内容（任意）">
+          </div>
+        </div>
       </div>
-      <button class="btn-add" style="margin-left:auto;" onclick="addShopItem()">追加</button>
+      <button class="btn-add" onclick="addShopItem()">追加</button>
     </div>
   </div>
 
@@ -452,12 +529,42 @@
       return;
     }
     el.innerHTML = todos.map(t => `
-      <div class="todo-item">
+      <div class="todo-item" id="todo-${t.id}">
         <div class="todo-check ${t.done ? 'done' : ''}" onclick="toggleTodo(${t.id})"></div>
         <span class="todo-text ${t.done ? 'done' : ''}">${esc(t.text)}</span>
+        <button class="btn-edit" onclick="startEditTodo(${t.id})">✏️</button>
         <button class="btn-del" onclick="deleteTodo(${t.id})">×</button>
       </div>
     `).join('');
+  }
+
+  function startEditTodo(id) {
+    const t = todos.find(t => t.id === id);
+    if (!t) return;
+    const el = document.getElementById(`todo-${id}`);
+    el.innerHTML = `
+      <div class="edit-form" style="flex:1;">
+        <input type="text" id="edit-todo-${id}" value="${esc(t.text)}" style="width:100%;">
+        <div class="edit-actions">
+          <button class="btn-cancel" onclick="renderTodos()">キャンセル</button>
+          <button class="btn-save" onclick="saveTodo(${id})">保存</button>
+        </div>
+      </div>
+    `;
+    document.getElementById(`edit-todo-${id}`).focus();
+    document.getElementById(`edit-todo-${id}`).addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveTodo(id);
+      if (e.key === 'Escape') renderTodos();
+    });
+  }
+
+  function saveTodo(id) {
+    const t = todos.find(t => t.id === id);
+    const val = document.getElementById(`edit-todo-${id}`).value.trim();
+    if (!val) return;
+    t.text = val;
+    save();
+    renderTodos();
   }
 
   document.getElementById('todo-input').addEventListener('keydown', e => {
@@ -465,9 +572,10 @@
   });
 
   // --- Shop ---
-  function toggleCoupon() {
-    const checked = document.getElementById('coupon-check').checked;
-    document.getElementById('coupon-text-wrap').classList.toggle('hidden', !checked);
+  function toggleCoupon(wrapId) {
+    const checkId = wrapId === 'coupon-text-wrap' ? 'coupon-check' : 'store-coupon-check';
+    const checked = document.getElementById(checkId).checked;
+    document.getElementById(wrapId).classList.toggle('hidden', !checked);
   }
 
   function addShopItem() {
@@ -476,6 +584,8 @@
     const price = document.getElementById('shop-price').value;
     const hasCoupon = document.getElementById('coupon-check').checked;
     const couponText = document.getElementById('coupon-text').value.trim();
+    const hasStoreCoupon = document.getElementById('store-coupon-check').checked;
+    const storeCouponText = document.getElementById('store-coupon-text').value.trim();
 
     if (!item) { document.getElementById('shop-item').focus(); return; }
 
@@ -486,6 +596,8 @@
       price: price !== '' ? Number(price) : null,
       coupon: hasCoupon,
       couponText,
+      storeCoupon: hasStoreCoupon,
+      storeCouponText,
       bought: false
     });
     save();
@@ -497,12 +609,13 @@
     document.getElementById('coupon-check').checked = false;
     document.getElementById('coupon-text').value = '';
     document.getElementById('coupon-text-wrap').classList.add('hidden');
+    document.getElementById('store-coupon-check').checked = false;
+    document.getElementById('store-coupon-text').value = '';
+    document.getElementById('store-coupon-text-wrap').classList.add('hidden');
     document.getElementById('shop-store').focus();
   }
 
-  document.getElementById('shop-item').addEventListener('keydown', e => {
-    if (e.key === 'Enter') addShopItem();
-  });
+  // Enterキーで誤送信しないよう無効化
 
   function toggleBought(id) {
     const s = shopItems.find(s => s.id === id);
@@ -533,11 +646,15 @@
 
     el.innerHTML = stores.map(store => {
       const items = ordered.filter(s => s.store === store);
+      const sc = items.find(s => s.storeCoupon);
+      const storeCouponBadge = sc
+        ? `<span class="badge badge-store-coupon">🏷 ${sc.storeCouponText ? esc(sc.storeCouponText) : 'お店クーポン使う！'}</span>`
+        : '';
       return `
         <div class="store-section">
-          <div class="store-name-header">${esc(store)}</div>
+          <div class="store-name-header">${esc(store)} ${storeCouponBadge}</div>
           ${items.map(s => `
-            <div class="shop-item ${s.bought ? 'bought' : ''}">
+            <div class="shop-item ${s.bought ? 'bought' : ''}" id="shop-${s.id}">
               <div class="shop-check ${s.bought ? 'bought' : ''}" onclick="toggleBought(${s.id})"></div>
               <div class="shop-info">
                 <div class="shop-item-name">${esc(s.item)}</div>
@@ -546,12 +663,76 @@
                   ${s.price !== null ? `<span class="badge badge-price">¥${s.price.toLocaleString()}</span>` : ''}
                 </div>
               </div>
+              <button class="btn-edit" onclick="startEditShop(${s.id})">✏️</button>
               <button class="btn-del" onclick="deleteShopItem(${s.id})">×</button>
             </div>
           `).join('')}
         </div>
       `;
     }).join('');
+  }
+
+  function startEditShop(id) {
+    const s = shopItems.find(s => s.id === id);
+    if (!s) return;
+    const el = document.getElementById(`shop-${id}`);
+    el.innerHTML = `
+      <div class="edit-form" style="flex:1;">
+        <div class="form-row">
+          <div class="form-group" style="min-width:100px;flex:0 0 auto;">
+            <label>お店</label>
+            <input type="text" id="es-store-${id}" value="${esc(s.store)}">
+          </div>
+          <div class="form-group">
+            <label>商品名</label>
+            <input type="text" id="es-item-${id}" value="${esc(s.item)}">
+          </div>
+          <div class="form-group" style="min-width:80px;flex:0 0 auto;">
+            <label>価格</label>
+            <input type="number" id="es-price-${id}" value="${s.price !== null ? s.price : ''}" placeholder="円" min="0">
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+          <label class="coupon-toggle">
+            <input type="checkbox" id="es-coupon-${id}" ${s.coupon ? 'checked' : ''} onchange="document.getElementById('es-coupontext-wrap-${id}').style.display=this.checked?'flex':'none'">
+            🎟 商品クーポン
+          </label>
+          <div id="es-coupontext-wrap-${id}" style="${s.coupon ? '' : 'display:none;'}flex:1;min-width:120px;">
+            <input type="text" id="es-coupontext-${id}" value="${esc(s.couponText || '')}" placeholder="内容（任意）" style="width:100%;">
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <label class="coupon-toggle">
+            <input type="checkbox" id="es-storecoupon-${id}" ${s.storeCoupon ? 'checked' : ''} onchange="document.getElementById('es-storecoupontext-wrap-${id}').style.display=this.checked?'flex':'none'">
+            🏷 お店クーポン
+          </label>
+          <div id="es-storecoupontext-wrap-${id}" style="${s.storeCoupon ? '' : 'display:none;'}flex:1;min-width:120px;">
+            <input type="text" id="es-storecoupontext-${id}" value="${esc(s.storeCouponText || '')}" placeholder="内容（任意）" style="width:100%;">
+          </div>
+        </div>
+        <div class="edit-actions">
+          <button class="btn-cancel" onclick="renderShop()">キャンセル</button>
+          <button class="btn-save" onclick="saveShop(${id})">保存</button>
+        </div>
+      </div>
+    `;
+    document.getElementById(`es-item-${id}`).focus();
+  }
+
+  function saveShop(id) {
+    const s = shopItems.find(s => s.id === id);
+    const item = document.getElementById(`es-item-${id}`).value.trim();
+    if (!item) return;
+    s.store = document.getElementById(`es-store-${id}`).value.trim() || '未設定';
+    s.item = item;
+    const price = document.getElementById(`es-price-${id}`).value;
+    s.price = price !== '' ? Number(price) : null;
+    s.coupon = document.getElementById(`es-coupon-${id}`).checked;
+    s.couponText = document.getElementById(`es-coupontext-${id}`).value.trim();
+    s.storeCoupon = document.getElementById(`es-storecoupon-${id}`).checked;
+    s.storeCouponText = document.getElementById(`es-storecoupontext-${id}`).value.trim();
+    save();
+    renderShop();
   }
 
   function esc(str) {

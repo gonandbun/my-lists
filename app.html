@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>やること＆買い物リスト</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e5e5e7;
+      padding: 16px 20px 0;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      color: #1d1d1f;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: #888;
+      border-bottom: 3px solid transparent;
+      transition: color .15s, border-color .15s;
+    }
+
+    .tab.active {
+      color: #007aff;
+      border-bottom-color: #007aff;
+    }
+
+    .page { display: none; padding: 20px; max-width: 640px; margin: 0 auto; }
+    .page.active { display: block; }
+
+    /* ---- 共通フォーム ---- */
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+
+    .card h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 12px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    label {
+      font-size: 12px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    input[type="text"], input[type="number"], select {
+      padding: 9px 12px;
+      border: 1.5px solid #e0e0e2;
+      border-radius: 9px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fafafa;
+      transition: border-color .15s;
+      width: 100%;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #007aff;
+      background: #fff;
+    }
+
+    .btn-add {
+      padding: 9px 20px;
+      background: #007aff;
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      align-self: flex-end;
+      transition: background .15s;
+    }
+
+    .btn-add:hover { background: #0062cc; }
+
+    /* ---- やることリスト ---- */
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f2;
+    }
+
+    .todo-item:last-child { border-bottom: none; }
+
+    .todo-check {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid #d0d0d5;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s, border-color .15s;
+    }
+
+    .todo-check.done {
+      background: #34c759;
+      border-color: #34c759;
+    }
+
+    .todo-check.done::after {
+      content: '';
+      width: 6px;
+      height: 10px;
+      border: 2px solid #fff;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg) translateY(-1px);
+    }
+
+    .todo-text {
+      flex: 1;
+      font-size: 15px;
+      line-height: 1.4;
+      transition: color .15s;
+    }
+
+    .todo-text.done {
+      text-decoration: line-through;
+      color: #aaa;
+    }
+
+    .btn-del {
+      background: none;
+      border: none;
+      color: #ccc;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: color .15s, background .15s;
+      line-height: 1;
+    }
+
+    .btn-del:hover { color: #ff3b30; background: #fff0ee; }
+
+    /* ---- 買い物リスト ---- */
+    .store-section { margin-bottom: 20px; }
+
+    .store-name-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: #555;
+      padding: 6px 12px;
+      background: #f0f0f5;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .store-name-header::before { content: '🏪'; font-size: 13px; }
+
+    .shop-item {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: opacity .2s;
+    }
+
+    .shop-item.bought {
+      opacity: .5;
+    }
+
+    .shop-check {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 2px solid #d0d0d5;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s, border-color .15s;
+    }
+
+    .shop-check.bought {
+      background: #007aff;
+      border-color: #007aff;
+    }
+
+    .shop-check.bought::after {
+      content: '';
+      width: 6px;
+      height: 10px;
+      border: 2px solid #fff;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg) translateY(-1px);
+    }
+
+    .shop-info { flex: 1; min-width: 0; }
+
+    .shop-item-name {
+      font-size: 15px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .shop-item.bought .shop-item-name {
+      text-decoration: line-through;
+      color: #aaa;
+    }
+
+    .shop-meta {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+
+    .badge-coupon {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffe69c;
+    }
+
+    .badge-price {
+      background: #e8f4fd;
+      color: #0563a8;
+      border: 1px solid #bee3f8;
+    }
+
+    .empty-msg {
+      text-align: center;
+      color: #bbb;
+      font-size: 14px;
+      padding: 32px 0;
+    }
+
+    .coupon-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .coupon-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 13px;
+      color: #555;
+      user-select: none;
+    }
+
+    .coupon-toggle input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #ff9500;
+    }
+
+    #coupon-text-wrap { flex: 1; min-width: 120px; }
+    #coupon-text-wrap.hidden { display: none; }
+
+    @media (max-width: 480px) {
+      .form-row { gap: 6px; }
+      .form-group { min-width: 100px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>やること＆買い物リスト</h1>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('todo')">やること</button>
+    <button class="tab" onclick="switchTab('shop')">買い物</button>
+  </div>
+</header>
+
+<!-- やることリスト -->
+<div id="page-todo" class="page active">
+  <div class="card">
+    <h2>新しいタスク</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="todo-input">タスク内容</label>
+        <input type="text" id="todo-input" placeholder="やることを入力…">
+      </div>
+      <button class="btn-add" onclick="addTodo()">追加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>リスト</h2>
+    <div id="todo-list"><p class="empty-msg">タスクはまだありません</p></div>
+  </div>
+</div>
+
+<!-- 買い物リスト -->
+<div id="page-shop" class="page">
+  <div class="card">
+    <h2>新しい買い物</h2>
+    <div class="form-row">
+      <div class="form-group" style="min-width:110px;flex:0 0 auto;">
+        <label for="shop-store">お店</label>
+        <input type="text" id="shop-store" placeholder="例：イオン">
+      </div>
+      <div class="form-group">
+        <label for="shop-item">商品名</label>
+        <input type="text" id="shop-item" placeholder="例：牛乳">
+      </div>
+      <div class="form-group" style="min-width:90px;flex:0 0 auto;">
+        <label for="shop-price">価格（任意）</label>
+        <input type="number" id="shop-price" placeholder="円" min="0">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:10px;align-items:center;">
+      <label class="coupon-toggle">
+        <input type="checkbox" id="coupon-check" onchange="toggleCoupon()">
+        🎟 クーポンあり
+      </label>
+      <div id="coupon-text-wrap" class="hidden form-group">
+        <input type="text" id="coupon-text" placeholder="クーポン内容（任意）">
+      </div>
+      <button class="btn-add" style="margin-left:auto;" onclick="addShopItem()">追加</button>
+    </div>
+  </div>
+
+  <div id="shop-list"></div>
+</div>
+
+<script>
+  // --- State ---
+  let todos = JSON.parse(localStorage.getItem('todos') || '[]');
+  let shopItems = JSON.parse(localStorage.getItem('shopItems') || '[]');
+
+  function save() {
+    localStorage.setItem('todos', JSON.stringify(todos));
+    localStorage.setItem('shopItems', JSON.stringify(shopItems));
+  }
+
+  // --- Tab ---
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', (i === 0) === (tab === 'todo'));
+    });
+    document.getElementById('page-todo').classList.toggle('active', tab === 'todo');
+    document.getElementById('page-shop').classList.toggle('active', tab === 'shop');
+  }
+
+  // --- Todo ---
+  function addTodo() {
+    const input = document.getElementById('todo-input');
+    const text = input.value.trim();
+    if (!text) return;
+    todos.push({ id: Date.now(), text, done: false });
+    save();
+    renderTodos();
+    input.value = '';
+    input.focus();
+  }
+
+  function toggleTodo(id) {
+    const t = todos.find(t => t.id === id);
+    if (t) t.done = !t.done;
+    save();
+    renderTodos();
+  }
+
+  function deleteTodo(id) {
+    todos = todos.filter(t => t.id !== id);
+    save();
+    renderTodos();
+  }
+
+  function renderTodos() {
+    const el = document.getElementById('todo-list');
+    if (!todos.length) {
+      el.innerHTML = '<p class="empty-msg">タスクはまだありません</p>';
+      return;
+    }
+    el.innerHTML = todos.map(t => `
+      <div class="todo-item">
+        <div class="todo-check ${t.done ? 'done' : ''}" onclick="toggleTodo(${t.id})"></div>
+        <span class="todo-text ${t.done ? 'done' : ''}">${esc(t.text)}</span>
+        <button class="btn-del" onclick="deleteTodo(${t.id})">×</button>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('todo-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTodo();
+  });
+
+  // --- Shop ---
+  function toggleCoupon() {
+    const checked = document.getElementById('coupon-check').checked;
+    document.getElementById('coupon-text-wrap').classList.toggle('hidden', !checked);
+  }
+
+  function addShopItem() {
+    const store = document.getElementById('shop-store').value.trim() || '未設定';
+    const item  = document.getElementById('shop-item').value.trim();
+    const price = document.getElementById('shop-price').value;
+    const hasCoupon = document.getElementById('coupon-check').checked;
+    const couponText = document.getElementById('coupon-text').value.trim();
+
+    if (!item) { document.getElementById('shop-item').focus(); return; }
+
+    shopItems.push({
+      id: Date.now(),
+      store,
+      item,
+      price: price !== '' ? Number(price) : null,
+      coupon: hasCoupon,
+      couponText,
+      bought: false
+    });
+    save();
+    renderShop();
+
+    document.getElementById('shop-store').value = '';
+    document.getElementById('shop-item').value = '';
+    document.getElementById('shop-price').value = '';
+    document.getElementById('coupon-check').checked = false;
+    document.getElementById('coupon-text').value = '';
+    document.getElementById('coupon-text-wrap').classList.add('hidden');
+    document.getElementById('shop-store').focus();
+  }
+
+  document.getElementById('shop-item').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addShopItem();
+  });
+
+  function toggleBought(id) {
+    const s = shopItems.find(s => s.id === id);
+    if (s) s.bought = !s.bought;
+    save();
+    renderShop();
+  }
+
+  function deleteShopItem(id) {
+    shopItems = shopItems.filter(s => s.id !== id);
+    save();
+    renderShop();
+  }
+
+  function renderShop() {
+    const el = document.getElementById('shop-list');
+    if (!shopItems.length) {
+      el.innerHTML = '<p class="empty-msg" style="padding:32px 0;text-align:center;color:#bbb;font-size:14px;">買い物リストはまだありません</p>';
+      return;
+    }
+
+    // group by store (未購入を上に、購入済みを下に)
+    const active = shopItems.filter(s => !s.bought);
+    const bought = shopItems.filter(s => s.bought);
+    const ordered = [...active, ...bought];
+
+    const stores = [...new Set(ordered.map(s => s.store))];
+
+    el.innerHTML = stores.map(store => {
+      const items = ordered.filter(s => s.store === store);
+      return `
+        <div class="store-section">
+          <div class="store-name-header">${esc(store)}</div>
+          ${items.map(s => `
+            <div class="shop-item ${s.bought ? 'bought' : ''}">
+              <div class="shop-check ${s.bought ? 'bought' : ''}" onclick="toggleBought(${s.id})"></div>
+              <div class="shop-info">
+                <div class="shop-item-name">${esc(s.item)}</div>
+                <div class="shop-meta">
+                  ${s.coupon ? `<span class="badge badge-coupon">🎟 ${s.couponText ? esc(s.couponText) : 'クーポン使う！'}</span>` : ''}
+                  ${s.price !== null ? `<span class="badge badge-price">¥${s.price.toLocaleString()}</span>` : ''}
+                </div>
+              </div>
+              <button class="btn-del" onclick="deleteShopItem(${s.id})">×</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function esc(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // init
+  renderTodos();
+  renderShop();
+</script>
+</body>
+</html>

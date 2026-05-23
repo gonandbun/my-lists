@@ -408,38 +408,25 @@
 <header>
   <h1>やること＆買い物リスト</h1>
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('todo')">やること</button>
-    <button class="tab" onclick="switchTab('shop')">買い物</button>
+    <button class="tab active" onclick="switchTab('shop')">買い物</button>
+    <button class="tab" onclick="switchTab('todo')">やること</button>
   </div>
 </header>
 
-<!-- やることリスト -->
-<div id="page-todo" class="page active">
-  <div class="card">
-    <h2>新しいタスク</h2>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="todo-input">タスク内容</label>
-        <input type="text" id="todo-input" placeholder="やることを入力…">
-      </div>
-      <button class="btn-add" onclick="addTodo()">追加</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>リスト</h2>
-    <div id="todo-list"><p class="empty-msg">タスクはまだありません</p></div>
-  </div>
-</div>
-
 <!-- 買い物リスト -->
-<div id="page-shop" class="page">
+<div id="page-shop" class="page active">
   <div class="card">
     <h2>新しい買い物</h2>
     <div class="form-row">
-      <div class="form-group" style="min-width:110px;flex:0 0 auto;">
-        <label for="shop-store">お店</label>
-        <input type="text" id="shop-store" placeholder="例：イオン">
+      <div class="form-group" style="min-width:130px;flex:0 0 auto;">
+        <label for="shop-store-select">お店</label>
+        <select id="shop-store-select" onchange="toggleStoreInput()">
+          <option value="杏林堂">杏林堂</option>
+          <option value="COOP">COOP</option>
+          <option value="遠鉄ストア">遠鉄ストア</option>
+          <option value="__other__">その他…</option>
+        </select>
+        <input type="text" id="shop-store-other" placeholder="お店名を入力" style="display:none;margin-top:6px;">
       </div>
       <div class="form-group">
         <label for="shop-item">商品名</label>
@@ -478,6 +465,25 @@
   <div id="shop-list"></div>
 </div>
 
+<!-- やることリスト -->
+<div id="page-todo" class="page">
+  <div class="card">
+    <h2>新しいタスク</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="todo-input">タスク内容</label>
+        <input type="text" id="todo-input" placeholder="やることを入力…">
+      </div>
+      <button class="btn-add" onclick="addTodo()">追加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>リスト</h2>
+    <div id="todo-list"><p class="empty-msg">タスクはまだありません</p></div>
+  </div>
+</div>
+
 <script>
   // --- State ---
   let todos = JSON.parse(localStorage.getItem('todos') || '[]');
@@ -491,10 +497,26 @@
   // --- Tab ---
   function switchTab(tab) {
     document.querySelectorAll('.tab').forEach((t, i) => {
-      t.classList.toggle('active', (i === 0) === (tab === 'todo'));
+      t.classList.toggle('active', (i === 0) === (tab === 'shop'));
     });
     document.getElementById('page-todo').classList.toggle('active', tab === 'todo');
     document.getElementById('page-shop').classList.toggle('active', tab === 'shop');
+  }
+
+  // --- お店プルダウン ---
+  function toggleStoreInput() {
+    const sel = document.getElementById('shop-store-select').value;
+    const other = document.getElementById('shop-store-other');
+    other.style.display = sel === '__other__' ? 'block' : 'none';
+    if (sel === '__other__') other.focus();
+  }
+
+  function getSelectedStore() {
+    const sel = document.getElementById('shop-store-select').value;
+    if (sel === '__other__') {
+      return document.getElementById('shop-store-other').value.trim() || '未設定';
+    }
+    return sel;
   }
 
   // --- Todo ---
@@ -579,7 +601,7 @@
   }
 
   function addShopItem() {
-    const store = document.getElementById('shop-store').value.trim() || '未設定';
+    const store = getSelectedStore();
     const item  = document.getElementById('shop-item').value.trim();
     const price = document.getElementById('shop-price').value;
     const hasCoupon = document.getElementById('coupon-check').checked;
@@ -603,7 +625,9 @@
     save();
     renderShop();
 
-    document.getElementById('shop-store').value = '';
+    document.getElementById('shop-store-select').value = '杏林堂';
+    document.getElementById('shop-store-other').style.display = 'none';
+    document.getElementById('shop-store-other').value = '';
     document.getElementById('shop-item').value = '';
     document.getElementById('shop-price').value = '';
     document.getElementById('coupon-check').checked = false;
@@ -612,7 +636,7 @@
     document.getElementById('store-coupon-check').checked = false;
     document.getElementById('store-coupon-text').value = '';
     document.getElementById('store-coupon-text-wrap').classList.add('hidden');
-    document.getElementById('shop-store').focus();
+    document.getElementById('shop-item').focus();
   }
 
   // Enterキーで誤送信しないよう無効化

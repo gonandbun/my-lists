@@ -397,6 +397,14 @@
     #coupon-text-wrap { flex: 1; min-width: 120px; }
     #coupon-text-wrap.hidden { display: none; }
 
+    .compare-row {
+      background: #fafafa;
+      border: 1px solid #eee;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+
     @media (max-width: 480px) {
       .form-row { gap: 6px; }
       .form-group { min-width: 100px; }
@@ -410,6 +418,7 @@
   <div class="tabs">
     <button class="tab active" onclick="switchTab('shop')">買い物</button>
     <button class="tab" onclick="switchTab('todo')">やること</button>
+    <button class="tab" onclick="switchTab('compare')">お得比較</button>
   </div>
 </header>
 
@@ -484,6 +493,24 @@
   </div>
 </div>
 
+<!-- お得比較 -->
+<div id="page-compare" class="page">
+  <div class="card">
+    <h2>どちらがお得？</h2>
+    <p style="font-size:13px;color:#888;margin-bottom:12px;">内容量と価格を入れると、1個（1g）あたりの値段を比べられます。</p>
+    <div id="compare-rows"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn-cancel" onclick="addCompareRow()">＋ 商品を追加</button>
+      <button class="btn-cancel" onclick="resetCompare()" style="margin-left:auto;">クリア</button>
+    </div>
+  </div>
+
+  <div class="card" id="compare-result-card" style="display:none;">
+    <h2>結果</h2>
+    <div id="compare-result"></div>
+  </div>
+</div>
+
 <script>
   // --- State ---
   let todos = JSON.parse(localStorage.getItem('todos') || '[]');
@@ -495,12 +522,14 @@
   }
 
   // --- Tab ---
+  const tabOrder = ['shop', 'todo', 'compare'];
   function switchTab(tab) {
     document.querySelectorAll('.tab').forEach((t, i) => {
-      t.classList.toggle('active', (i === 0) === (tab === 'shop'));
+      t.classList.toggle('active', tabOrder[i] === tab);
     });
-    document.getElementById('page-todo').classList.toggle('active', tab === 'todo');
     document.getElementById('page-shop').classList.toggle('active', tab === 'shop');
+    document.getElementById('page-todo').classList.toggle('active', tab === 'todo');
+    document.getElementById('page-compare').classList.toggle('active', tab === 'compare');
   }
 
   // --- お店プルダウン ---
@@ -759,6 +788,82 @@
     renderShop();
   }
 
+  // --- お得比較 ---
+  let compareCount = 0;
+
+  function addCompareRow(label) {
+    compareCount++;
+    const n = compareCount;
+    const div = document.createElement('div');
+    div.className = 'compare-row';
+    div.id = `cmp-row-${n}`;
+    div.innerHTML = `
+      <div style="font-size:12px;font-weight:700;color:#888;margin-bottom:4px;">商品${n}</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>商品名（任意）</label>
+          <input type="text" id="cmp-name-${n}" placeholder="例：お徳用パック" oninput="calcCompare()">
+        </div>
+        <div class="form-group" style="min-width:90px;flex:0 0 auto;">
+          <label>内容量</label>
+          <input type="number" id="cmp-amount-${n}" placeholder="例：500" min="0" step="any" oninput="calcCompare()">
+        </div>
+        <div class="form-group" style="min-width:90px;flex:0 0 auto;">
+          <label>価格（円）</label>
+          <input type="number" id="cmp-price-${n}" placeholder="例：398" min="0" oninput="calcCompare()">
+        </div>
+      </div>
+    `;
+    document.getElementById('compare-rows').appendChild(div);
+  }
+
+  function resetCompare() {
+    document.getElementById('compare-rows').innerHTML = '';
+    compareCount = 0;
+    addCompareRow();
+    addCompareRow();
+    document.getElementById('compare-result-card').style.display = 'none';
+  }
+
+  function calcCompare() {
+    const rows = [];
+    for (let n = 1; n <= compareCount; n++) {
+      const el = document.getElementById(`cmp-amount-${n}`);
+      if (!el) continue;
+      const amount = Number(el.value);
+      const price = Number(document.getElementById(`cmp-price-${n}`).value);
+      const name = document.getElementById(`cmp-name-${n}`).value.trim() || `商品${n}`;
+      if (amount > 0 && price > 0) {
+        rows.push({ n, name, amount, price, unit: price / amount });
+      }
+    }
+
+    const card = document.getElementById('compare-result-card');
+    if (rows.length < 2) {
+      card.style.display = 'none';
+      return;
+    }
+
+    const best = Math.min(...rows.map(r => r.unit));
+    card.style.display = 'block';
+    document.getElementById('compare-result').innerHTML = rows.map(r => {
+      const isBest = r.unit === best;
+      const diff = isBest ? '' : `<span style="font-size:11px;color:#999;">（+${(r.unit - best).toFixed(2)}円）</span>`;
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;border-radius:10px;${isBest ? 'background:#e9f9ee;border:1.5px solid #34c759;' : 'background:#f5f5f7;'}">
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:600;">${isBest ? '🏆 ' : ''}${esc(r.name)}</div>
+            <div style="font-size:12px;color:#888;">${r.amount}あたり ¥${r.price.toLocaleString()}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:16px;font-weight:700;${isBest ? 'color:#1ea94c;' : 'color:#555;'}">${r.unit.toFixed(2)}円</div>
+            <div style="font-size:11px;color:#999;">1あたり ${diff}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
   function esc(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
@@ -766,6 +871,8 @@
   // init
   renderTodos();
   renderShop();
+  addCompareRow();
+  addCompareRow();
 </script>
 </body>
 </html>
